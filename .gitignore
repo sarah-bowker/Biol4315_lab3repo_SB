@@ -4,3 +4,10 @@
 .Ruserdata
 .GCF_000146045.2_R64_genomic.fna
 .GCF_000146045.2_R64_genomic.gff
+.R64_chr1.fna
+.contig_vs_chr1.bam
+.contig_vs_chr1.sorted.bam
+.contig_vs_chr1.sorted.bam.bai
+.cds_aln.bam
+.cds_aln.sorted.bam
+.cds_aln.sorted.bam.bai
