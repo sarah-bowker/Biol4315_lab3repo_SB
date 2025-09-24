@@ -5,3 +5,158 @@ date: "2025-09-18"
 output: html_document
 ---
 
+# Q1: Allignment statistics  
+```{r assembly_stats, echo=TRUE}
+# The assembly stats taken from flye.log file
+assembly_stats <- data.frame(
+  Total_Length = 12723434,
+  N50 = 51863,
+  Contigs_Number = 357,
+  Largest_Contig = 302359,
+  Coverage = 8
+)
+
+# The total assembly length (12,723,434 bp) is close to the expected genome size, but the number of contigs (357) is much higher than expected, indicating that the genome assembly is fragmented and not complete. In addition, the coverage is low (8), which contributes to the incomplete assembly.
+
+knitr::kable(assembly_stats, caption = "Assembly Statistics from Flye Log")
+```
+
+# Q2: BUSCO results
+```
+# a. What were the BUSCO scores? Given the coverage do you think they are good
+BUSCO results show 33.7% compeleness score wich is very low with 65.8% missing. Given the low covarage of 8, the results were expected to not be good.
+
+# b. What was the N50 compared to the flye calculated one?
+N50 of BUSCO IS 51 kbp wich is similar to the flye utput N50 of 51863 which keeps it consistant.
+
+# c. What was the total assembly length?
+Total assembly length from BUSCO was 12723434 which is exactly the same as the flye output we got.
+
+```
+
+# Q3: QUAST output
+```
+# a. What was the genome fraction how does it compare to BUSCO?
+Genome fraction was 47.3% which is higher than the 33.7% from BUSCO. This suggests that almost half of the reference genome aligns with the assembly.
+
+# b. What was the duplication ratio?
+The genome duplication ratio was 1.068 which indicates a small amount of duplicated content in the assembly.
+
+# c. What was the level of misassemblies and what is the length of the misassembled contigs? What does it tell you about how well the reference genome represents the genomic diversity of the species S. cerevisiae?
+Both the number of misassemblies and the length of misassembled contigs were 0 which indicates that the aligned fragments match the reference well structurally. However, since only 47.3% of the genome aligns, this suggests that either large parts of the genome are missing or the reference genome may not fully represent the genomic diversity of the sample strain.
+
+```
+# Q4: Extraction of chromosome 1 from the fna file 
+
+```{r extract_chr1,  message=FALSE, warning=FALSE}
+
+if (!requireNamespace("Biostrings", quietly = TRUE)) {
+  if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+  }
+  BiocManager::install("Biostrings")
+}
+library(Biostrings)
+
+genome <- readDNAStringSet("GCF_000146045.2_R64_genomic.fna")
+chr1_seq <- genome["NC_001133.9 Saccharomyces cerevisiae S288C chromosome I, complete sequence"]
+writeXStringSet(chr1_seq, "R64_chr1.fna")
+
+```
+
+# Q5.alignment plot
+```{r contig_alignment, fig.width=16, fig.height=12,message=FALSE, warning=FALSE}
+BiocManager::install("Rsamtools")
+BiocManager::install("GenomicAlignments")
+BiocManager::install("GenomicRanges")
+BiocManager::install("Gviz")
+
+library(Rsamtools)
+library(GenomicAlignments)
+library(GenomicRanges)
+library(Gviz)
+
+# BAM file path
+bam_file <- "contig_vs_chr1.sorted.bam"
+
+# Open connection to BAM file
+bam <- BamFile(bam_file)
+
+# Read all alignments (already restricted to chr1)
+alns <- readGAlignments(bam)
+
+# Convert to GRanges object
+gr_alns <- granges(alns)
+
+options(ucscChromosomeNames = FALSE)
+aln_track <- AnnotationTrack(gr_alns, name = "Contigs", genome = "sacCer3", chromosome = "NC_001133.9")
+
+# Add genome axis for scale
+axis_track <- GenomeAxisTrack()
+
+# Plot
+plotTracks(list(axis_track, aln_track),
+           from = min(start(gr_alns)),
+           to = max(end(gr_alns)),
+           main = "Contig Alignments to Chromosome 1")
+
+
+#How many contigs did you have aligning to chromosome 1?
+# 2 contigs aligned to chromosome1
+
+```
+
+# Q6. Garbing the longest contig
+```{r extract_longest_contig, eval=FALSE}
+
+# Read the assembly fasta
+assembly <- readDNAStringSet("assembly.fasta")
+
+# Find the longest contig
+lengths <- width(assembly)
+longest_contig <- assembly[which.max(lengths)]
+
+# Save the longest contig
+writeXStringSet(longest_contig, "longest_contig.fasta")
+
+```
+
+# Q7. Getting bam and bai files for cds_aln.sam file
+
+```{bash, eval=FALSE}
+samtools view -bS cds_aln.sam > cds_aln.bam
+samtools sort cds_aln.bam -o cds_aln.sorted.bam
+samtools index cds_aln.sorted.bam
+
+```
+
+# 8. Visualize CDS
+
+```{r visualize_cds, fig.width=16, fig.height=12, message=FALSE, warning=FALSE}
+
+# BAM file path
+bam_cds_file <- "cds_aln.sorted.bam"
+
+# Open connection to BAM file
+bam_cds <- BamFile(bam_cds_file)
+
+# Read all alignments (already restricted to chr1)
+alns_cds <- readGAlignments(bam_cds)
+
+# Convert to GRanges object
+gr_alns_cds <- granges(alns_cds)
+
+options(ucscChromosomeNames = FALSE)
+
+aln_track_cds <- AnnotationTrack(gr_alns_cds, name = "Contigs", genome = "sacCer3", chromosome = "contig_168")
+
+# Add genome axis for scale
+axis_track_cds <- GenomeAxisTrack()
+
+# Plot
+plotTracks(list(axis_track_cds, aln_track_cds),
+          from = min(start(gr_alns_cds)),
+          to = max(end(gr_alns_cds)),
+          main = "Longest Contig Alignments to the Cds")
+
+```
